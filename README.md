@@ -1,73 +1,68 @@
-# React + TypeScript + Vite
+# 🌌 Gemini File Search Store Browser
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A high-fidelity, professional web application designed to browse and manage your persistent **Gemini File Search API** (v1beta) stores. Built for developers who need a clean, visual interface to inspect their RAG (Retrieval-Augmented Generation) document stores on Google Cloud.
 
-Currently, two official plugins are available:
+![App Screenshot](https://raw.githubusercontent.com/nandiraju/store-browser/main/public/screenshot.png) *(Note: Add a real screenshot later)*
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ✨ Features
 
-## React Compiler
+- **🚀 Live RAG Inspector**: Instantly list all your `FileSearchStores` and their underlying documents.
+- **💎 Premium UX**: A "white-based" minimalist aesthetic with glassmorphic accents, smooth animations, and a focus on clarity.
+- **📄 Metadata deep-dive**: View document MIME types, creation times, and custom metadata pairs in a structured grid or table.
+- **🌓 Dual Display Modes**: Toggle between a visual **Card View** and a data-dense **Table View**.
+- **🔑 Secure Configuration**: Your Gemini API key is stored locally in your browser's `localStorage`—never sent to any server except Google's.
+- **🌓 Dark Mode**: Built-in support for low-light environments with a single click.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Technology Stack
 
-## Expanding the ESLint configuration
+- **Framework**: [React 19](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Styling**: [Tailwind CSS v3](https://tailwindcss.com/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Animations**: [Framer Motion](https://www.framer.com/motion/)
+- **Deployment**: [GitHub Pages](https://pages.github.com/)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🚀 Getting Started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Prerequisites
+- Node.js (v20 or higher)
+- A [Google Gemini API Key](https://aistudio.google.com/app/apikey) (Ensure you have access to the `v1beta` models).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. **Clone the repository**
+   ```bash
+   git clone git@github.com:nandiraju/store-browser.git
+   cd store-browser
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Run locally**
+   ```bash
+   npm run dev
+   ```
+
+4. **Build for production**
+   ```bash
+   npm run build
+   ```
+
+## 🌐 Deployment
+
+The app is configured to deploy directly to GitHub Pages:
+
+```bash
+npm run deploy
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Access the live demo at: [https://nandiraju.github.io/store-browser/](https://nandiraju.github.io/store-browser/)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 📝 License
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+*Generated with ❤️ by Antigravity*

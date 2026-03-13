@@ -14,7 +14,11 @@ import {
   Info,
   Calendar,
   Type,
-  X
+  X,
+  LayoutGrid,
+  List as ListIcon,
+  Clock,
+  Hash
 } from 'lucide-react';
 import { GeminiService } from './services/gemini';
 import type { FileSearchStore, FileSearchDocument } from './services/gemini';
@@ -38,6 +42,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
   const geminiService = useMemo(() => new GeminiService(apiKey), [apiKey]);
 
@@ -99,7 +104,7 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
       {/* Sidebar */}
-      <aside className="w-80 border-r border-[var(--border)] bg-[var(--sidebar)] flex flex-col">
+      <aside className="w-80 border-r border-[var(--border)] bg-[var(--sidebar)] flex flex-col z-20">
         <div className="p-6 border-b border-[var(--border)] flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
@@ -137,11 +142,11 @@ export default function App() {
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all group",
                 selectedStore?.name === store.name 
                   ? "bg-primary text-white shadow-md shadow-primary/20" 
-                  : "hover:bg-slate-200 dark:hover:bg-slate-800"
+                  : "hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
               )}
             >
               <Folder size={18} className={cn(
-                selectedStore?.name === store.name ? "text-white" : "text-primary"
+                selectedStore?.name === store.name ? "text-white" : "text-primary/70"
               )} />
               <div className="flex-1 truncate">
                 <div className="font-medium truncate">{store.displayName || store.name.split('/').pop()}</div>
@@ -177,72 +182,134 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col relative overflow-hidden">
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-slate-50 dark:bg-slate-900/50">
         {loading && (
-          <div className="absolute inset-x-0 top-0 h-1 bg-primary/20 overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-1 bg-primary/20 overflow-hidden z-30">
             <div className="h-full bg-primary animate-[loading_1s_infinite]" style={{ width: '40%' }}></div>
           </div>
         )}
 
         {selectedStore ? (
           <>
-            <header className="p-6 border-b border-[var(--border)] glass flex items-center justify-between sticky top-0 z-10">
+            <header className="px-8 py-6 border-b border-[var(--border)] glass flex items-center justify-between sticky top-0 z-10">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight">{selectedStore.displayName || selectedStore.name.split('/').pop()}</h2>
-                <p className="text-sm text-slate-500 font-mono mt-1">{selectedStore.name}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Created</div>
-                  <div className="text-xs font-medium">{new Date(selectedStore.createTime).toLocaleDateString()}</div>
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  {selectedStore.displayName || selectedStore.name.split('/').pop()}
+                </h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs font-mono text-slate-400 select-all">{selectedStore.name}</span>
+                  <span className="w-1 h-1 bg-slate-300 dark:bg-slate-700 rounded-full"></span>
+                  <span className="text-[11px] font-medium text-slate-500">
+                    Created: {new Date(selectedStore.createTime).toLocaleDateString()}
+                  </span>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-[var(--border)]">
+                <button 
+                  onClick={() => setViewMode('card')}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    viewMode === 'card' 
+                      ? "bg-white dark:bg-slate-700 shadow-sm text-primary" 
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                  title="Card View"
+                >
+                  <LayoutGrid size={18} />
+                </button>
+                <button 
+                  onClick={() => setViewMode('table')}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    viewMode === 'table' 
+                      ? "bg-white dark:bg-slate-700 shadow-sm text-primary" 
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                  title="Table View"
+                >
+                  <ListIcon size={18} />
+                </button>
+                <div className="w-px h-6 bg-slate-300 dark:bg-slate-700 mx-1"></div>
                 <button 
                   onClick={() => loadDocuments(selectedStore)}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all text-slate-500 hover:text-primary"
+                  title="Refresh"
                 >
                   <Loader2 size={18} className={cn(loading && "animate-spin")} />
                 </button>
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-8">
-              {error && (
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl text-red-600 dark:text-red-400 text-sm flex gap-3">
-                  <Info size={18} className="shrink-0" />
-                  {error}
-                </div>
-              )}
+            <div className="flex-1 overflow-y-auto w-full max-w-7xl mx-auto">
+              <div className="p-8">
+                {error && (
+                  <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl text-red-600 dark:text-red-400 text-sm flex gap-3">
+                    <Info size={18} className="shrink-0" />
+                    {error}
+                  </div>
+                )}
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {documents.map(doc => (
-                  <DocumentCard key={doc.name} document={doc} />
-                ))}
+                {viewMode === 'card' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+                    {documents.map(doc => (
+                      <DocumentCard key={doc.name} document={doc} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-slate-800 border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm">
+                    <DocumentTable documents={documents} />
+                  </div>
+                )}
+
+                {documents.length === 0 && !loading && !error && (
+                  <div className="flex flex-col items-center justify-center py-32 text-slate-400">
+                    <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+                      <FileText size={40} strokeWidth={1} className="opacity-40" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400">No documents found</h3>
+                    <p className="max-w-xs text-center text-sm mt-2">
+                      This store is currently empty. Upload documents via the Gemini API to see them here.
+                    </p>
+                  </div>
+                )}
               </div>
-
-              {documents.length === 0 && !loading && !error && (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                  <FileText size={64} strokeWidth={1} className="mb-4 opacity-20" />
-                  <p>No documents in this store</p>
-                </div>
-              )}
             </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-3xl flex items-center justify-center text-slate-400 mb-6">
-              <Database size={48} strokeWidth={1.5} />
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"></div>
+              <div className="relative w-32 h-32 bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-2xl flex items-center justify-center text-primary border border-slate-100 dark:border-slate-700">
+                <Database size={64} strokeWidth={1.5} />
+              </div>
             </div>
-            <h1 className="text-3xl font-bold mb-2">Google File Search Browser</h1>
-            <p className="text-slate-500 max-w-md mx-auto">
-              Select a file search store from the sidebar to view its documents and metadata.
+            <h1 className="text-4xl font-extrabold mb-4 tracking-tight">Google File Search Store Browser</h1>
+            <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto text-lg leading-relaxed">
+              Explore your persistent document stores for Gemini Managed RAG. 
+              View files, metadata, and timestamps in a high-fidelity interface.
             </p>
             {!apiKey && (
               <button 
                 onClick={() => setShowSettings(true)}
-                className="mt-8 px-6 py-3 bg-primary text-white rounded-2xl font-semibold shadow-lg shadow-primary/30 hover:scale-105 transition-transform"
+                className="mt-10 px-8 py-4 bg-primary text-white rounded-2xl font-bold shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
               >
-                Configure API Key
+                <Key size={20} />
+                Configure API Key to Begin
               </button>
+            )}
+            {apiKey && stores.length > 0 && (
+              <div className="mt-12 flex items-center gap-2 text-primary font-medium">
+                <ChevronRight className="animate-pulse" />
+                Select a store from the sidebar to start browsing
+              </div>
+            )}
+            {apiKey && stores.length === 0 && !loading && (
+               <div className="mt-12 p-6 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-3xl max-w-md">
+                 <p className="text-sm text-amber-800 dark:text-amber-400">
+                    No stores detected for this API key. Ensure you have created persistent stores via the `fileSearchStores.create` endpoint.
+                 </p>
+               </div>
             )}
           </div>
         )}
@@ -252,17 +319,20 @@ export default function App() {
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => apiKey && setShowSettings(false)}></div>
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-8">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 border border-slate-200 dark:border-slate-800">
+            <div className="p-10">
               <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 text-primary rounded-xl">
-                    <Key size={24} />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                    <Key size={24} strokeWidth={2.5} />
                   </div>
-                  <h3 className="text-xl font-bold font-sans">Settings</h3>
+                  <div>
+                    <h3 className="text-xl font-bold font-sans">API Configuration</h3>
+                    <p className="text-xs text-slate-500">Provide your Google AI key</p>
+                  </div>
                 </div>
                 {apiKey && (
-                  <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                  <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400">
                     <X size={20} />
                   </button>
                 )}
@@ -270,30 +340,32 @@ export default function App() {
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold mb-2 ml-1">Gemini API Key</label>
+                  <label className="block text-sm font-bold mb-2 ml-1 text-slate-700 dark:text-slate-300">Gemini API Key</label>
                   <input 
                     type="password"
                     defaultValue={apiKey}
                     autoFocus
-                    placeholder="Enter your API key..."
+                    placeholder="sb_..."
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleSaveSettings(e.currentTarget.value);
                     }}
-                    className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-slate-400"
+                    className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-slate-400 font-mono"
                     id="settings-api-key"
                   />
-                  <p className="text-[11px] text-slate-500 mt-2 flex items-center gap-1.5 ml-1">
-                    <Info size={12} />
-                    Your key is stored locally in your browser.
-                  </p>
+                  <div className="mt-3 flex items-start gap-2 ml-1">
+                    <Info size={14} className="text-primary mt-0.5 shrink-0" />
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      This key allows access to your stores and files. It's stored strictly in your browser's local encrypted enclave.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800 p-5 rounded-2xl">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1">Quick Links</h4>
-                  <div className="space-y-3">
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" className="flex items-center justify-between p-3 bg-white dark:bg-slate-700 rounded-xl text-sm font-medium hover:shadow-sm transition-all group">
-                      Get API Key
-                      <ExternalLink size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-4">Quick Resources</h4>
+                  <div className="space-y-2">
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" className="flex items-center justify-between p-3.5 bg-white dark:bg-slate-700 rounded-xl text-sm font-semibold hover:border-primary border border-transparent transition-all group shadow-sm">
+                      Google AI Studio
+                      <ExternalLink size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform text-slate-400" />
                     </a>
                   </div>
                 </div>
@@ -303,9 +375,9 @@ export default function App() {
                     const input = document.getElementById('settings-api-key') as HTMLInputElement;
                     handleSaveSettings(input.value);
                   }}
-                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-xl shadow-primary/30 hover:opacity-90 active:scale-[0.98] transition-all"
+                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-xl shadow-primary/30 hover:opacity-90 active:scale-[0.98] transition-all text-lg"
                 >
-                  Save Configuration
+                  Save Settings
                 </button>
               </div>
             </div>
@@ -318,6 +390,20 @@ export default function App() {
           from { transform: translateX(-100%); }
           to { transform: translateX(250%); }
         }
+        
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: rgba(156, 163, 175, 0.2);
+          border-radius: 20px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(156, 163, 175, 0.4);
+        }
       `}</style>
     </div>
   );
@@ -325,42 +411,50 @@ export default function App() {
 
 function DocumentCard({ document }: { document: FileSearchDocument }) {
   return (
-    <div className="bg-white dark:bg-slate-800 border border-[var(--border)] rounded-3xl p-6 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all group">
-      <div className="flex items-start gap-4 mb-4">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-          <FileText size={24} />
+    <div className="bg-white dark:bg-slate-800 border border-[var(--border)] rounded-[2rem] p-7 hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all group">
+      <div className="flex items-start gap-4 mb-6">
+        <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-900/30">
+          <FileText size={28} />
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="text-lg font-bold truncate group-hover:text-primary transition-colors">
+        <div className="flex-1 min-w-0 pt-1">
+          <h4 className="text-xl font-bold truncate group-hover:text-primary transition-colors pr-2">
             {document.displayName || document.name.split('/').pop()}
           </h4>
-          <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-            <span className="flex items-center gap-1">
-              <Type size={12} />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 mt-2">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Type size={14} className="text-slate-300" />
               {document.mimeType}
             </span>
-            <span className="flex items-center gap-1">
-              <Calendar size={12} />
+            <span className="flex items-center gap-1.5 font-medium">
+              <Clock size={14} className="text-slate-300" />
               {new Date(document.updateTime).toLocaleDateString()}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl overflow-hidden">
-          <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Resource Name</div>
-          <div className="text-[11px] font-mono truncate text-slate-500">{document.name}</div>
+      <div className="space-y-4">
+        <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 group-hover:bg-primary/[0.02] group-hover:border-primary/10 transition-colors">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Resource ID</span>
+            <Hash size={10} className="text-slate-300" />
+          </div>
+          <div className="text-[11px] font-mono truncate text-slate-500 break-all select-all">{document.name}</div>
         </div>
 
         {document.customMetadata && Object.keys(document.customMetadata).length > 0 && (
           <div>
-            <div className="text-[10px] uppercase font-bold text-slate-400 mb-2 ml-1">Metadata</div>
+            <div className="flex items-center justify-between mb-3 ml-1">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Metadata Context</span>
+              <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-[9px] font-bold text-slate-500">
+                {Object.keys(document.customMetadata).length} fields
+              </span>
+            </div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(document.customMetadata).map(([key, value]) => (
-                <div key={key} className="px-3 py-1.5 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-lg text-[11px]">
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{key}:</span>{' '}
-                  <span className="text-slate-600 dark:text-slate-300">
+                <div key={key} className="px-3.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl text-[11px] flex items-center gap-1.5">
+                  <span className="font-bold text-slate-900 dark:text-slate-200">{key}:</span>
+                  <span className="text-slate-600 dark:text-slate-400 truncate max-w-[150px]">
                     {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                   </span>
                 </div>
@@ -369,6 +463,66 @@ function DocumentCard({ document }: { document: FileSearchDocument }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function DocumentTable({ documents }: { documents: FileSearchDocument[] }) {
+  return (
+    <div className="w-full overflow-x-auto">
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-[var(--border)]">
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 w-12">#</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Name</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 w-48">Type</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 w-48">Updated</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Metadata</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--border)]">
+          {documents.map((doc, idx) => (
+            <tr key={doc.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+              <td className="px-6 py-5 text-sm text-slate-400 font-mono">{idx + 1}</td>
+              <td className="px-6 py-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg group-hover:scale-110 transition-transform">
+                    <FileText size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate max-w-xs">{doc.displayName || doc.name.split('/').pop()}</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate max-w-xs">{doc.name}</div>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-5">
+                <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                  {doc.mimeType}
+                </span>
+              </td>
+              <td className="px-6 py-5">
+                <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+                  <Calendar size={14} className="text-slate-300" />
+                  {new Date(doc.updateTime).toLocaleDateString()}
+                </div>
+              </td>
+              <td className="px-6 py-5">
+                <div className="flex flex-wrap gap-1.5">
+                  {doc.customMetadata && Object.entries(doc.customMetadata).map(([key, value]) => (
+                    <div key={key} className="px-2 py-0.5 bg-indigo-50/30 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-900/20 rounded-md text-[10px]">
+                      <span className="font-bold text-indigo-600/70">{key}:</span>{' '}
+                      <span className="text-slate-500">{String(value)}</span>
+                    </div>
+                  ))}
+                  {(!doc.customMetadata || Object.keys(doc.customMetadata).length === 0) && (
+                    <span className="text-[10px] text-slate-300 italic">No metadata</span>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
