@@ -24,13 +24,16 @@ import {
   ArrowDown,
   PanelLeftOpen,
   PanelLeftClose,
-  Code2
+  Code2,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { GeminiService } from './services/gemini';
 import type { FileSearchStore, FileSearchDocument } from './services/gemini';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Modal, Input, Button, ConfigProvider, theme, App as AntdApp } from 'antd';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -90,6 +93,8 @@ export default function App() {
   const [selectedDoc, setSelectedDoc] = useState<FileSearchDocument | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'idx', direction: null });
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'document' | 'store'; name: string; displayName: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const geminiService = useMemo(() => new GeminiService(apiKey), [apiKey]);
 
@@ -179,9 +184,55 @@ export default function App() {
     setSelectedDoc(doc);
   };
 
+  const handleDeleteDocument = async (docName: string) => {
+    setDeleting(true);
+    try {
+      await geminiService.deleteDocument(docName);
+      setDocuments(prev => prev.filter(d => d.name !== docName));
+      if (selectedDoc?.name === docName) setSelectedDoc(null);
+      setDeleteConfirm(null);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to delete document';
+      setError(message);
+      setDeleteConfirm(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteStore = async (storeName: string) => {
+    setDeleting(true);
+    try {
+      await geminiService.deleteStore(storeName);
+      setStores(prev => prev.filter(s => s.name !== storeName));
+      if (selectedStore?.name === storeName) {
+        setSelectedStore(null);
+        setDocuments([]);
+        setSelectedDoc(null);
+      }
+      setDeleteConfirm(null);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to delete store';
+      setError(message);
+      setDeleteConfirm(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[var(--background)] text-[var(--foreground)] relative">
-      {/* Fixed Toggle for Left Sidebar when closed */}
+    <ConfigProvider
+      theme={{
+        algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: {
+          colorPrimary: '#3b82f6',
+          borderRadius: 16,
+        },
+      }}
+    >
+      <AntdApp>
+        <div className="flex h-screen w-full overflow-hidden bg-[var(--background)] text-[var(--foreground)] relative">
+          {/* Fixed Toggle for Left Sidebar when closed */}
       {!isLeftPanelOpen && (
         <button 
           onClick={() => setIsLeftPanelOpen(true)}
@@ -226,8 +277,8 @@ export default function App() {
               </div>
             </div>
 
-            <div className="p-4 shrink-0">
-              <div className="relative">
+            <div className="px-4 pb-4 shrink-0 flex gap-2">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input 
                   type="text" 
@@ -237,6 +288,14 @@ export default function App() {
                   className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-[var(--border)] rounded-xl focus:ring-2 focus:ring-primary outline-none text-sm font-sans"
                 />
               </div>
+              <button 
+                onClick={loadStores}
+                disabled={loading}
+                className="p-2 bg-slate-100 dark:bg-slate-800 border border-[var(--border)] rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-slate-500 hover:text-primary disabled:opacity-50 group"
+                title="Refresh Stores"
+              >
+                <Loader2 size={18} className={cn(loading && "animate-spin", "group-hover:scale-110 transition-transform")} />
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar">
@@ -269,6 +328,20 @@ export default function App() {
                   )} />
                 </button>
               ))}
+              
+              {!loading && filteredStores.length === 0 && (
+                <div className="py-12 px-6 text-center">
+                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-40">
+                    <Database size={24} />
+                  </div>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                    No stores found
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-2 font-medium">
+                    Check your API key or create a store via the Gemini API.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="p-4 border-t border-[var(--border)] shrink-0">
@@ -343,6 +416,13 @@ export default function App() {
                     <Loader2 size={18} className={cn(loading && "animate-spin")} />
                   </button>
                 </div>
+                <button
+                  onClick={() => setDeleteConfirm({ type: 'store', name: selectedStore.name, displayName: selectedStore.displayName || selectedStore.name.split('/').pop() || 'store' })}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl hover:bg-red-100 dark:hover:bg-red-950/50 hover:border-red-300 dark:hover:border-red-800 transition-all text-xs font-bold uppercase tracking-wider"
+                >
+                  <Trash2 size={14} />
+                  Delete Store
+                </button>
               </div>
             </header>
 
@@ -359,7 +439,13 @@ export default function App() {
                   {viewMode === 'card' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {sortedDocuments.map(doc => (
-                        <DocumentCard key={doc.name} document={doc} isSelected={selectedDoc?.name === doc.name} onClick={() => handleSelectDoc(doc)} />
+                        <DocumentCard 
+                          key={doc.name} 
+                          document={doc} 
+                          isSelected={selectedDoc?.name === doc.name} 
+                          onClick={() => handleSelectDoc(doc)} 
+                          onDelete={() => setDeleteConfirm({ type: 'document', name: doc.name, displayName: doc.displayName || doc.name.split('/').pop() || 'document' })}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -370,6 +456,7 @@ export default function App() {
                         onRowClick={(doc) => handleSelectDoc(doc)}
                         onSort={requestSort}
                         sortConfig={sortConfig}
+                        onDeleteDoc={(doc) => setDeleteConfirm({ type: 'document', name: doc.name, displayName: doc.displayName || doc.name.split('/').pop() || 'document' })}
                       />
                     </div>
                   )}
@@ -555,6 +642,85 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Delete Confirmation Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-red-600">
+            <AlertTriangle size={20} />
+            <span className="uppercase font-black tracking-tight">
+              Delete {deleteConfirm?.type === 'store' ? 'Store' : 'Document'}
+            </span>
+          </div>
+        }
+        open={!!deleteConfirm}
+        onCancel={() => !deleting && setDeleteConfirm(null)}
+        footer={[
+          <Button key="cancel" disabled={deleting} onClick={() => setDeleteConfirm(null)} className="rounded-xl px-6 h-11 font-bold">
+            Cancel
+          </Button>,
+          <Button 
+            key="delete" 
+            danger 
+            type="primary" 
+            loading={deleting}
+            disabled={deleteConfirm?.type === 'store' && (document.getElementById('delete-confirm-input') as HTMLInputElement)?.value !== 'DELETE'}
+            onClick={() => {
+              if (deleteConfirm) {
+                if (deleteConfirm.type === 'store') {
+                  handleDeleteStore(deleteConfirm.name);
+                } else {
+                  handleDeleteDocument(deleteConfirm.name);
+                }
+              }
+            }}
+            className="rounded-xl px-8 h-11 font-black shadow-lg shadow-red-500/20"
+          >
+            DELETE
+          </Button>
+        ]}
+        centered
+        width={480}
+        styles={{
+          mask: { backdropFilter: 'blur(8px)', backgroundColor: 'rgba(15, 23, 42, 0.6)' },
+          body: { padding: '1rem' }
+        }}
+      >
+        <div className="py-2">
+          {deleteConfirm && (
+            <div className="mb-6 p-5 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl">
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                {deleteConfirm.type === 'store' ? (
+                  <>You are about to permanently delete the store <strong className="text-red-600">"{deleteConfirm.displayName}"</strong> and all its content.</>
+                ) : (
+                  <>You are about to permanently delete the document <strong className="text-red-600">"{deleteConfirm.displayName}"</strong>.</>
+                )}
+              </p>
+              <div className="mt-3 text-[10px] font-mono text-slate-400 truncate opacity-60">
+                {deleteConfirm.name}
+              </div>
+            </div>
+          )}
+
+          {deleteConfirm?.type === 'store' && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+              <label className="block text-xs font-black uppercase tracking-widest mb-2 ml-1 text-slate-400">
+                Type <span className="text-red-500">DELETE</span> to confirm
+              </label>
+              <Input 
+                id="delete-confirm-input"
+                placeholder="DELETE"
+                autoFocus
+                className="h-12 rounded-xl border-2 border-slate-100 dark:border-slate-800 focus:border-red-500 font-black tracking-widest text-center"
+                onChange={(e) => {
+                  const btn = document.querySelector('.ant-modal-footer .ant-btn-dangerous') as HTMLButtonElement;
+                  if (btn) btn.disabled = e.target.value !== 'DELETE';
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </Modal>
+
       <style>{`
         @keyframes loading {
           from { transform: translateX(-100%); }
@@ -588,7 +754,9 @@ export default function App() {
           scrollbar-width: none;
         }
       `}</style>
-    </div>
+        </div>
+      </AntdApp>
+    </ConfigProvider>
   );
 }
 
@@ -613,7 +781,7 @@ function PropertyItem({ icon, label, value, isMono = false }: { icon: React.Reac
   );
 }
 
-function DocumentCard({ document, isSelected, onClick }: { document: FileSearchDocument, isSelected: boolean, onClick: () => void }) {
+function DocumentCard({ document, isSelected, onClick, onDelete }: { document: FileSearchDocument, isSelected: boolean, onClick: () => void, onDelete: () => void }) {
   return (
     <div 
       onClick={onClick}
@@ -624,6 +792,13 @@ function DocumentCard({ document, isSelected, onClick }: { document: FileSearchD
           : "border-[var(--border)] hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none hover:border-slate-300 dark:hover:border-slate-700"
       )}
     >
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        className="absolute top-4 right-4 z-20 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+        title="Delete document"
+      >
+        <Trash2 size={14} />
+      </button>
       {isSelected && (
         <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
       )}
@@ -705,12 +880,13 @@ function DocumentCard({ document, isSelected, onClick }: { document: FileSearchD
   );
 }
 
-function DocumentTable({ documents, selectedDocName, onRowClick, onSort, sortConfig }: { 
+function DocumentTable({ documents, selectedDocName, onRowClick, onSort, sortConfig, onDeleteDoc }: { 
   documents: FileSearchDocument[], 
   selectedDocName?: string,
   onRowClick: (doc: FileSearchDocument) => void,
   onSort: (key: keyof FileSearchDocument | 'idx') => void,
-  sortConfig: SortConfig
+  sortConfig: SortConfig,
+  onDeleteDoc: (doc: FileSearchDocument) => void
 }) {
   const HeaderCell = ({ label, sortKey, className }: { label: string, sortKey?: keyof FileSearchDocument | 'idx', className?: string }) => (
     <th 
@@ -751,6 +927,7 @@ function DocumentTable({ documents, selectedDocName, onRowClick, onSort, sortCon
             <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-left w-[80px]">#</th>
             <HeaderCell label="Asset Details" sortKey="displayName" className="w-[450px]" />
             <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-left">Property Matrix (JSON System)</th>
+            <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center w-[80px]"></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--border)]">
@@ -831,6 +1008,15 @@ function DocumentTable({ documents, selectedDocName, onRowClick, onSort, sortCon
                        <Hash size={12}/> Empty
                     </div>
                   )}
+                </td>
+                <td className="px-6 py-8 text-center">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteDoc(doc); }}
+                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-all opacity-0 group-hover:opacity-100"
+                    title="Delete document"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </td>
               </tr>
             );

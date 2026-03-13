@@ -60,4 +60,14 @@ export class GeminiService {
     // storeName is usually "fileSearchStores/id"
     return this.fetchWithError(`${storeName}/documents`);
   }
+
+  async deleteDocument(documentName: string): Promise<void> {
+    // documentName is "fileSearchStores/{storeId}/documents/{docId}"
+    await this.fetchWithError(documentName, { method: 'DELETE' });
+  }
+
+  async deleteStore(storeName: string): Promise<void> {
+    // storeName is "fileSearchStores/{storeId}"
+    await this.fetchWithError(storeName, { method: 'DELETE' });
+  }
 }
